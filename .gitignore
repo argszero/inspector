@@ -1,0 +1,8 @@
+# Idea Projects #
+###################
+*.iml
+.idea
+
+# Maven target #
+###################
+target
