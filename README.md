@@ -1,10 +1,10 @@
 # inspector
 
+不重启JVM的情况下动态修改正在运行的类
+
 ## 原理
 
 java instrument
-
-稍后详细解释
 
 ## 如何使用
 
