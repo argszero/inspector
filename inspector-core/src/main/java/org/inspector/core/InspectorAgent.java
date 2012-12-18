@@ -1,4 +1,7 @@
-package org.inspector.core.replace;
+package org.inspector.core;
+
+import org.inspector.agent.Agent;
+import org.inspector.core.replace.ClassesFileTransformer;
 
 import java.io.*;
 import java.lang.instrument.ClassFileTransformer;
@@ -12,17 +15,18 @@ import static java.lang.String.format;
 /**
  *
  */
-public class Agent {
-    public static void agentmain(String args, Instrumentation inst) throws IOException, UnmodifiableClassException, InterruptedException {
+public class InspectorAgent implements Agent {
+    @Override
+    public void main(String args, Instrumentation inst) throws IOException, UnmodifiableClassException, InterruptedException {
         final Map<String, byte[]> newClasses = new HashMap<String, byte[]>();
         final Map<String, byte[]> oldClasses = new HashMap<String, byte[]>();
         for (String arg : args.split(" ")) {
+            if (arg.startsWith("-D")) {
+                String[] split = arg.substring(2, arg.length()).split("=");
+                System.setProperty(split[0], split[1]);
+            }
             File newClassFile = new File(arg);
-            String className = readClassName(newClassFile);
-            byte[] bytes = readClassContent(newClassFile);
-            newClasses.put(className, bytes);
-            System.out.println("discover:" + className);
-
+            discover(newClasses, newClassFile);
         }
 
         ClassFileTransformer transformer = new ClassesFileTransformer(newClasses, oldClasses);
@@ -48,10 +52,28 @@ public class Agent {
 
     }
 
+    private void discover(Map<String, byte[]> newClasses, File file) throws IOException {
+        if (file.isFile()) {
+            String className = readClassName(file);
+            if (className != null) {
+                byte[] bytes = readClassContent(file);
+                newClasses.put(className, bytes);
+                System.out.println("discover:" + className);
+            }
+        } else if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    discover(newClasses, child);
+                }
+            }
+        }
+    }
+
 
     private static void replaceLoadedClasses(Instrumentation inst, final Map<String, byte[]> newClasses, final Map<String, byte[]> oldClasses) throws UnmodifiableClassException {
         Class[] classes = inst.getAllLoadedClasses();
-        System.out.println("Loaded Classes:" + classes.length);
+        System.out.println("Loaded classes:" + classes.length);
         for (Class clz : classes) {
             if (newClasses.containsKey(clz.getName())) {
                 System.out.println("trans:" + clz.getName());
@@ -73,23 +95,27 @@ public class Agent {
     }
 
     public static String readClassName(InputStream is) throws IOException {
-        DataInputStream dis = new DataInputStream(is);
-        dis.readLong(); // skip header and class version
-        int cpcnt = (dis.readShort() & 0xffff) - 1;
-        int[] classes = new int[cpcnt];
-        String[] strings = new String[cpcnt];
-        for (int i = 0; i < cpcnt; i++) {
-            int t = dis.read();
-            if (t == 7) classes[i] = dis.readShort() & 0xffff;
-            else if (t == 1) strings[i] = dis.readUTF();
-            else if (t == 5 || t == 6) {
-                dis.readLong();
-                i++;
-            } else if (t == 8) dis.readShort();
-            else dis.readInt();
+        try {
+            DataInputStream dis = new DataInputStream(is);
+            dis.readLong(); // skip header and class version
+            int cpcnt = (dis.readShort() & 0xffff) - 1;
+            int[] classes = new int[cpcnt];
+            String[] strings = new String[cpcnt];
+            for (int i = 0; i < cpcnt; i++) {
+                int t = dis.read();
+                if (t == 7) classes[i] = dis.readShort() & 0xffff;
+                else if (t == 1) strings[i] = dis.readUTF();
+                else if (t == 5 || t == 6) {
+                    dis.readLong();
+                    i++;
+                } else if (t == 8) dis.readShort();
+                else dis.readInt();
+            }
+            dis.readShort(); // skip access flags
+            return strings[classes[(dis.readShort() & 0xffff) - 1] - 1].replace('/', '.');
+        } catch (Exception e) {
+            return null;
         }
-        dis.readShort(); // skip access flags
-        return strings[classes[(dis.readShort() & 0xffff) - 1] - 1].replace('/', '.');
     }
 
     private static byte[] readClassContent(File file) throws IOException {
@@ -121,5 +147,4 @@ public class Agent {
         }
 
     }
-
 }
