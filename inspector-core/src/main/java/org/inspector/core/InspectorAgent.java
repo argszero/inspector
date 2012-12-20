@@ -54,7 +54,8 @@ public class InspectorAgent implements Agent {
 
     private void discover(Map<String, byte[]> newClasses, File file) throws IOException {
         if (file.isFile()) {
-            String className = readClassName(file);
+            String className
+                    = readClassName(file);
             if (className != null) {
                 byte[] bytes = readClassContent(file);
                 newClasses.put(className, bytes);
@@ -75,7 +76,7 @@ public class InspectorAgent implements Agent {
         Class[] classes = inst.getAllLoadedClasses();
         System.out.println("Loaded classes:" + classes.length);
         for (Class clz : classes) {
-            if (newClasses.containsKey(clz.getName())) {
+            if (newClasses.containsKey(clz.getName().replace('.','/'))) {
                 System.out.println("trans:" + clz.getName());
                 inst.retransformClasses(clz);
             }
@@ -112,7 +113,7 @@ public class InspectorAgent implements Agent {
                 else dis.readInt();
             }
             dis.readShort(); // skip access flags
-            return strings[classes[(dis.readShort() & 0xffff) - 1] - 1].replace('/', '.');
+            return strings[classes[(dis.readShort() & 0xffff) - 1] - 1];
         } catch (Exception e) {
             return null;
         }
