@@ -34,9 +34,15 @@ public class InspectorAgent implements Agent {
         replaceLoadedClasses(inst, newClasses, oldClasses);
         long time = Long.parseLong(System.getProperty("time", 60 + ""));
         if (time >= 0) {
-            System.out.println(format("classes will transform back after %d second.", time));
-
-            Thread.sleep(time * 1000);
+            if (Boolean.parseBoolean(System.getProperty("enableCountdown", "true"))) {
+                for (long i = time; i >= 0; i--) {
+                    System.out.print(format("\rclasses will transform back after %d second.(use -DenableCountdown=false to turn off count down)", i));
+                    Thread.sleep(1000);
+                }
+            } else {
+                System.out.print(format("\rclasses will transform back after %d second.(use -DenableCountdown=true to turn on count down)", time));
+                Thread.sleep(time * 1000);
+            }
 
             System.out.println("classes will transform back now");
             inst.removeTransformer(transformer);
