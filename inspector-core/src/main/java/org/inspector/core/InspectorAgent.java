@@ -9,6 +9,7 @@ import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.String.format;
 
@@ -17,21 +18,16 @@ import static java.lang.String.format;
  */
 public class InspectorAgent implements Agent {
     @Override
-    public void main(String args, Instrumentation inst) throws IOException, UnmodifiableClassException, InterruptedException {
-        final Map<String, byte[]> newClasses = new HashMap<String, byte[]>();
-        final Map<String, byte[]> oldClasses = new HashMap<String, byte[]>();
-        for (String arg : args.split(" ")) {
-            if (arg.startsWith("-D")) {
-                String[] split = arg.substring(2, arg.length()).split("=");
-                System.setProperty(split[0], split[1]);
-            }
-            File newClassFile = new File(arg);
-            discover(newClasses, newClassFile);
+    public void main(String args, Instrumentation inst, ConcurrentHashMap<String, byte[]> oldClasses) throws IOException, UnmodifiableClassException, InterruptedException {
+        final Map<String, byte[]> newClasses = discoverClassesTobeReplaced(args);
+        if (!oldClasses.isEmpty()) {
+            // if there is old classes not recovered, recover it now
+            recover(inst, oldClasses);
         }
 
         ClassFileTransformer transformer = new ClassesFileTransformer(newClasses, oldClasses);
         inst.addTransformer(transformer, true);
-        replaceLoadedClasses(inst, newClasses, oldClasses);
+        replaceLoadedClasses(inst, newClasses);
         long time = Long.parseLong(System.getProperty("time", 60 + ""));
         if (time >= 0) {
             if (Boolean.parseBoolean(System.getProperty("enableCountdown", "true"))) {
@@ -43,19 +39,36 @@ public class InspectorAgent implements Agent {
                 System.out.print(format("\rclasses will transform back after %d second.(use -DenableCountdown=true to turn on count down)", time));
                 Thread.sleep(time * 1000);
             }
-
             System.out.println("classes will transform back now");
             inst.removeTransformer(transformer);
-
-            transformer = new ClassesFileTransformer(oldClasses, newClasses);
-            inst.addTransformer(transformer, true);
-            replaceLoadedClasses(inst, oldClasses, newClasses);
-            inst.removeTransformer(transformer);
-            System.out.println("classes already transform backed");
+            recover(inst, oldClasses);
         } else {
             System.out.println(format("classes will never transform back is time is set to %d", time));
         }
 
+    }
+
+    private void recover(Instrumentation inst, ConcurrentHashMap<String, byte[]> oldClasses) throws UnmodifiableClassException {
+        System.out.println("recover...");
+        ClassFileTransformer transformer = new ClassesFileTransformer(oldClasses, new ConcurrentHashMap<String, byte[]>());
+        inst.addTransformer(transformer, true);
+        replaceLoadedClasses(inst, oldClasses);
+        inst.removeTransformer(transformer);
+        oldClasses.clear();
+        System.out.println("recovered success");
+    }
+
+    private Map<String, byte[]> discoverClassesTobeReplaced(String args) throws IOException {
+        final Map<String, byte[]> newClasses = new HashMap<String, byte[]>();
+        for (String arg : args.split(" ")) {
+            if (arg.startsWith("-D")) {
+                String[] split = arg.substring(2, arg.length()).split("=");
+                System.setProperty(split[0], split[1]);
+            }
+            File newClassFile = new File(arg);
+            discover(newClasses, newClassFile);
+        }
+        return newClasses;
     }
 
     private void discover(Map<String, byte[]> newClasses, File file) throws IOException {
@@ -78,11 +91,11 @@ public class InspectorAgent implements Agent {
     }
 
 
-    private static void replaceLoadedClasses(Instrumentation inst, final Map<String, byte[]> newClasses, final Map<String, byte[]> oldClasses) throws UnmodifiableClassException {
+    private static void replaceLoadedClasses(Instrumentation inst, final Map<String, byte[]> newClasses) throws UnmodifiableClassException {
         Class[] classes = inst.getAllLoadedClasses();
         System.out.println("Loaded classes:" + classes.length);
         for (Class clz : classes) {
-            if (newClasses.containsKey(clz.getName().replace('.','/'))) {
+            if (newClasses.containsKey(clz.getName().replace('.', '/'))) {
                 System.out.println("trans:" + clz.getName());
                 inst.retransformClasses(clz);
             }

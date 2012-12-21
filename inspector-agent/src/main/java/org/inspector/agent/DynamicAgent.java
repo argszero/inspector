@@ -6,8 +6,11 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DynamicAgent {
+    private final static ConcurrentHashMap<String, byte[]> oldClasses = new ConcurrentHashMap<String, byte[]>();
+
     public static void agentmain(String args, Instrumentation inst) throws Exception {
         File agentJarFile = new File(DynamicAgent.class.getProtectionDomain().getCodeSource().getLocation().getPath());
         File parentDirectory = agentJarFile.getParentFile();
@@ -24,7 +27,7 @@ public class DynamicAgent {
         Class agentClass = classLoader.loadClass("org.inspector.core.InspectorAgent");
         Object obj = agentClass.newInstance();
         if (obj instanceof Agent) {
-            ((Agent) obj).main(args, inst);
+            ((Agent) obj).main(args, inst, oldClasses);
         }
     }
 }
