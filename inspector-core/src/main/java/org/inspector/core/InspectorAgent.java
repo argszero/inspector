@@ -30,7 +30,7 @@ public class InspectorAgent implements Agent {
         replaceLoadedClasses(inst, newClasses);
         long time = Long.parseLong(System.getProperty("time", 60 + ""));
         if (time >= 0) {
-            if (Boolean.parseBoolean(System.getProperty("enableCountdown", "true"))) {
+            if (Boolean.parseBoolean(System.getProperty("enableCountdown", "false"))) {
                 for (long i = time; i >= 0; i--) {
                     System.out.print(format("\rclasses will transform back after %d second.(use -DenableCountdown=false to turn off count down)", i));
                     Thread.sleep(1000);
@@ -66,6 +66,7 @@ public class InspectorAgent implements Agent {
                 System.setProperty(split[0], split[1]);
             }
             File newClassFile = new File(arg);
+            System.out.println("discover from :"+newClassFile.getCanonicalPath());
             discover(newClasses, newClassFile);
         }
         return newClasses;

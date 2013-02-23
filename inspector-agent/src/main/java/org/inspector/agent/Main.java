@@ -24,8 +24,9 @@ public class Main {
         List<String> listArgs = new ArrayList<String>();
         String processId = null;
         for (int i = args.length - 1; i >= 0; i--) {
-            if (Pattern.matches("\\d+", args[i])) {
-                processId = args[i];
+            System.out.println("arg["+i+"]:>"+args[i].trim()+"<");
+            if (Pattern.matches("\\d+", args[i].trim())) {
+                processId = args[i].trim();
             } else {
                 listArgs.add(args[i]);
             }

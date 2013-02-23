@@ -4,15 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.inspector</groupId>
+        <artifactId>inspector</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
     <groupId>org.inspector</groupId>
-    <artifactId>inspector</artifactId>
+    <artifactId>inspector-examples</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <modules>
-        <module>inspector-core</module>
-        <module>inspector-agent</module>
-        <module>inspector-distribute</module>
-        <module>inspector-examples</module>
-        <module>ssh-link</module>
-    </modules>
+
+    
 </project>
