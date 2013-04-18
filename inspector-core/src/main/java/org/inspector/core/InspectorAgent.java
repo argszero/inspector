@@ -74,8 +74,10 @@ public class InspectorAgent implements Agent {
 
     private void discover(Map<String, byte[]> newClasses, File file) throws IOException {
         if (file.isFile()) {
+            System.out.println("read class name from "+file.getCanonicalPath());
             String className
                     = readClassName(file);
+            System.out.println("="+className);
             if (className != null) {
                 byte[] bytes = readClassContent(file);
                 newClasses.put(className, bytes);
@@ -95,12 +97,25 @@ public class InspectorAgent implements Agent {
     private static void replaceLoadedClasses(Instrumentation inst, final Map<String, byte[]> newClasses) throws UnmodifiableClassException {
         Class[] classes = inst.getAllLoadedClasses();
         System.out.println("Loaded classes:" + classes.length);
+        StringBuilder sb = new StringBuilder();
         for (Class clz : classes) {
-            if (newClasses.containsKey(clz.getName().replace('.', '/'))) {
-                System.out.println("trans:" + clz.getName());
-                inst.retransformClasses(clz);
-            }
+          sb.append(clz.getName());
+          sb.append(",");
         }
+        System.out.println(sb.toString());
+        System.out.println("to find");
+        sb = new StringBuilder();
+        for(String newClass:newClasses.keySet()){
+          sb.append(newClass);
+          sb.append(",");
+        }
+      System.out.println(sb.toString());
+      for (Class clz : classes) {
+        if (newClasses.containsKey(clz.getName().replace('.', '/'))) {
+          System.out.println("trans:" + clz.getName());
+          inst.retransformClasses(clz);
+        }
+      }
     }
 
     public static String readClassName(File file) throws IOException {
